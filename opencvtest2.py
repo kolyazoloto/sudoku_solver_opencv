@@ -1,8 +1,6 @@
 #coding=utf-8
-import cv2 as cv,sys,numpy as np
-import os,copy,time
-from sudoku_solver import solve
-
+import cv2 as cv,numpy as np
+import os,copy
 ####################################################################
 #recognition code
 def digit_recog(img):
@@ -47,7 +45,7 @@ os.chdir(current_folder)
 # end load examples
 
 ############################# testing part  #########################
-img = cv.imread("2.jpg",1)
+img = cv.imread("1.jpg",1)
 
 img = cv.resize(img,None,fx=0.5, fy=0.5)
 
@@ -107,6 +105,17 @@ sudoku_digits = []
 count = 0
 cells.sort(key=sort_key)
 digits.sort(key=sort_key)
+
+
+'''for index_c,cell in enumerate(cells):
+    x_c = cell[0]
+    y_c = cell[1]
+    w_c = cell[2]
+    h_c = cell[3]
+    cv.putText(img_crop, str(count), (x_c + 17, y_c + 40), cv.FONT_ITALIC, 1, (255, 0,255), 2)
+    cv.rectangle(img_crop,(x_c,y_c),(x_c+w_c,y_c+h_c),(0,0,255))
+    count += 1'''
+
 sudoku_list = [[0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0],
@@ -116,6 +125,7 @@ sudoku_list = [[0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0]]
+
 
 for index_c,cell in enumerate(cells):
     x_c = cell[0]
@@ -133,13 +143,9 @@ for index_c,cell in enumerate(cells):
             digit_img = cv.adaptiveThreshold(digit_img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 3)
             result, accur = digit_recog(digit_img)
             sudoku_list[index_c // 9][index_c % 9] = result
-
-
 ##### solve sudoku
-global grid
 grid = sudoku_list
 def possible(y,x,n):
-    global grid
     for i in range(0,9):
         if grid[y][i] == n:
             return False
@@ -155,7 +161,6 @@ def possible(y,x,n):
     return True
 
 def solve():
-    global grid
     for y in range(len(grid)):
         for x in range(len(grid[y])):
             if grid[y][x] == 0:
@@ -168,25 +173,9 @@ def solve():
     for index_c, cell in enumerate(cells):
         x_c = cell[0]
         y_c = cell[1]
-        w_c = cell[2]
-        h_c = cell[3]
-        for index_d, digit in enumerate(digits):
-            x_d = digit[0]
-            y_d = digit[1]
-            if  (x_c < x_d < x_c + w_c and y_c < y_d < y_c + h_c):
-                pass
-                #result = grid[index_c // 9][index_c % 9]
-                #cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (0, 0, 255), 2)
-                #cv.putText(img_crop, str(result), (x_c + w_c//2, y_c + h_c//2), cv.FONT_ITALIC, 1, (0, 0, 0), 2)
-            else:
-                result = grid[index_c // 9][index_c % 9]
-                cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (0, 0, 255), 2)
-                cv.putText(img_crop, str(result), (x_c + 15, y_c + 30), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0), 2)
-
-    print(np.matrix(grid))
-
-
-
+        result = grid[index_c // 9][index_c % 9]
+        #cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (255, 255, 0),-1)
+        cv.putText(img_crop, str(result), (x_c + 17, y_c + 40), cv.FONT_HERSHEY_TRIPLEX, 1.4, (50, 50, 200), 3)
 
 solve()
 cv.imshow("Sudoku window",img_crop)
