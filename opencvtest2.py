@@ -1,11 +1,10 @@
 #coding=utf-8
 import cv2 as cv,sys,numpy as np
 import os,copy,time
+from sudoku_solver import solve
 
 ####################################################################
 #recognition code
-examples = []
-
 def digit_recog(img):
     img = img
     img = cv.resize(img, (28, 19))
@@ -32,6 +31,8 @@ def digit_recog(img):
             digit = index + 1
     return digit,accur
 
+
+examples = []
 current_folder = os.getcwd()
 os.chdir(current_folder+"\data\examples")
 # load examples
@@ -52,6 +53,8 @@ img = cv.resize(img,None,fx=0.5, fy=0.5)
 
 canny = cv.Canny(img,200,600)
 contours, hierarchy = cv.findContours(canny, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+
 for index,cnt in enumerate(contours):
     if cv.contourArea(cnt) > 13000:
         (x,y,w,h)  = cv.boundingRect(contours[index])
@@ -66,6 +69,8 @@ os.chdir(os.getcwd()+'\data')
 ## Находим ячейки причем без повторов
 prev = [[0,0,0,0]]
 prev_digits = [[0,0,0,0]]
+
+
 for index,cnt in enumerate(contours):
 
     if 1<cv.contourArea(cnt) < 6000:
@@ -90,28 +95,18 @@ for index,cnt in enumerate(contours):
                     break
             if (isok):
                 prev.append([x,y,w,h])
-
-
 #################################################################
-## Cjhbnehtv cgbcjr zxttr
+
 def sort_key(x):
     return ((x[0]/60) + (x[1]/60)*9)
+
+
 cells = prev[1:]
 digits = prev_digits[1:]
 sudoku_digits = []
 count = 0
-
 cells.sort(key=sort_key)
 digits.sort(key=sort_key)
-'''for cell in cells:
-    count += 1
-    x = cell[0]
-    y = cell[1]
-    w = cell[2]
-    h = cell[3]
-    cv.rectangle(img_crop, (x, y), (x + w, y + h), (0, 0, 255), 2)
-    cv.putText(img_crop, str(count), (x, y+20), cv.FONT_ITALIC, 0.6, (255, 0, 0), 2)'''
-
 sudoku_list = [[0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0],
@@ -132,19 +127,68 @@ for index_c,cell in enumerate(cells):
         y_d = digit[1]
         w_d = digit[2]
         h_d = digit[3]
-        if (x_c < x_d < x_c + w_c) and y_c < y_d < y_c + h_c:
-
+        if x_c < x_d < x_c + w_c and y_c < y_d < y_c + h_c:
             digit_img = img_crop[y_d:y_d + h_d, x_d:x_d + w_d]
             digit_img = cv.cvtColor(digit_img, cv.COLOR_RGB2GRAY)
             digit_img = cv.adaptiveThreshold(digit_img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 3)
             result, accur = digit_recog(digit_img)
             sudoku_list[index_c // 9][index_c % 9] = result
-            #cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (0, 0, 255), 2)
-            #cv.putText(img_crop, str(index_c), (x_d, y_d + 20), cv.FONT_ITALIC, 1, (255, 0, 255), 2)
 
-#print(sudoku_list)'''
+
+##### solve sudoku
+global grid
+grid = sudoku_list
+def possible(y,x,n):
+    global grid
+    for i in range(0,9):
+        if grid[y][i] == n:
+            return False
+    for i in range(0,9):
+        if grid[i][x] == n:
+            return False
+    x0 = (x // 3) * 3
+    y0 = (y // 3) * 3
+    for i in range(0,3):
+        for j in range(0,3):
+            if grid[y0+i][x0+j] == n:
+                return False
+    return True
+
+def solve():
+    global grid
+    for y in range(len(grid)):
+        for x in range(len(grid[y])):
+            if grid[y][x] == 0:
+                for n in range(1,10):
+                    if possible(y,x,n):
+                        grid[y][x] = n
+                        solve()
+                        grid[y][x] = 0
+                return
+    for index_c, cell in enumerate(cells):
+        x_c = cell[0]
+        y_c = cell[1]
+        w_c = cell[2]
+        h_c = cell[3]
+        for index_d, digit in enumerate(digits):
+            x_d = digit[0]
+            y_d = digit[1]
+            if  (x_c < x_d < x_c + w_c and y_c < y_d < y_c + h_c):
+                pass
+                #result = grid[index_c // 9][index_c % 9]
+                #cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (0, 0, 255), 2)
+                #cv.putText(img_crop, str(result), (x_c + w_c//2, y_c + h_c//2), cv.FONT_ITALIC, 1, (0, 0, 0), 2)
+            else:
+                result = grid[index_c // 9][index_c % 9]
+                cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (0, 0, 255), 2)
+                cv.putText(img_crop, str(result), (x_c + 15, y_c + 30), cv.FONT_HERSHEY_COMPLEX, 1, (0, 0, 0), 2)
+
+    print(np.matrix(grid))
+
+
+
+
+solve()
 cv.imshow("Sudoku window",img_crop)
-#cv.imshow("Sudoku win",canny_crop)
-for i in sudoku_list:
-    print(i)
+
 cv.waitKey(0)
