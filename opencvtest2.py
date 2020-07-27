@@ -46,7 +46,7 @@ os.chdir(current_folder)
 
 ############################# testing part  #########################
 ####################################################################
-img = cv.imread("5.jpg",1)
+img = cv.imread("3.jpg",1)
 
 img = cv.resize(img,None,fx=0.5, fy=0.5)
 
@@ -55,7 +55,6 @@ canny = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
 canny = cv.adaptiveThreshold(canny, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 3)
 contours, hierarchy = cv.findContours(canny, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
-rot = 0
 for index,cnt in enumerate(contours):
     if 180000< cv.contourArea(cnt) < 400000:
         #print(cv.contourArea(cnt))
@@ -65,15 +64,15 @@ for index,cnt in enumerate(contours):
             #cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0),5)
             img_crop = img[y:y + h, x:x + w]
             rot = cv.minAreaRect(cnt)
-            print (rot)
+            img_crop_size = [w,h]
+
 #########################################################################################
 def rotate_image(image, angle):
   image_center = tuple(np.array(image.shape[1::-1]) / 2)
   rot_mat = cv.getRotationMatrix2D(image_center, angle, 1.0)
   result = cv.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv.INTER_LINEAR)
   return result
-#img_crop = rotate_image(img_crop,3)
-#canny_crop = cv.Canny(img_crop,100,300)
+
 canny_crop = cv.cvtColor(img_crop, cv.COLOR_RGB2GRAY)
 canny_crop = cv.adaptiveThreshold(canny_crop, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11,7)
 contours, hierarchy = cv.findContours(canny_crop, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
@@ -111,17 +110,54 @@ for index,cnt in enumerate(contours):
                 prev.append([x,y,w,h])
 #################################################################
 
-def sort_key(x):
-    return ((x[0]/60) + (x[1]/60)*9)
+
 
 
 cells = prev[1:]
 digits = prev_digits[1:]
 sudoku_digits = []
 count = 0
-cells.sort(key=sort_key)
-digits.sort(key=sort_key)
+#cells.sort(key=sort_key)
+#digits.sort(key=sort_key)
 
+
+# Проверим сортировку
+y_lines = []
+y_st = -10
+y_fin = y_st + cells[0][3]
+for i in range(9):
+    x_line = []
+    for index_c,cell in enumerate(cells):
+        start_sort_val = 0
+        x_c = cell[0]
+        y_c = cell[1]
+        w_c = cell[2]
+        h_c = cell[3]
+        for k in range(y_c,y_c+h_c):
+            if y_st < k < y_fin:
+                start_sort_val = (abs(max(y_st,y_c) - min(y_fin,y_c+h_c)))
+                x_line.append([start_sort_val,x_c,y_c,w_c,h_c])
+                break
+
+    y_st = y_fin
+    y_fin += img_crop_size[1] // 9
+    x_line.sort(key=lambda x:x[0],reverse=1)
+    y_lines.append(x_line[:9])
+for i in y_lines:
+    i.sort(key=lambda x:x[1])
+##############################
+'''Пробуем отрисовать заного отсортированное
+for row in y_lines:
+    for cell in row:
+        x_c = cell[1]
+        y_c = cell[2]
+        w_c = cell[3]
+        h_c = cell[4]
+        cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (255, 255, 0),1)
+        cv.putText(img_crop, str(count), (x_c, y_c + 35), cv.FONT_HERSHEY_TRIPLEX, 1, (250, 0, 200), 2)
+        count += 1
+
+'''
 sudoku_list = [[0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0],
@@ -133,24 +169,26 @@ sudoku_list = [[0,0,0,0,0,0,0,0,0],
                [0,0,0,0,0,0,0,0,0]]
 
 
-for index_c,cell in enumerate(cells):
-    x_c = cell[0]
-    y_c = cell[1]
-    w_c = cell[2]
-    h_c = cell[3]
-    for index_d,digit in enumerate(digits):
-        x_d = digit[0]
-        y_d = digit[1]
-        w_d = digit[2]
-        h_d = digit[3]
-        if x_c < x_d < x_c + w_c and y_c < y_d < y_c + h_c:
-            digit_img = img_crop[y_d:y_d + h_d, x_d:x_d + w_d]
-            digit_img = cv.cvtColor(digit_img, cv.COLOR_RGB2GRAY)
-            digit_img = cv.adaptiveThreshold(digit_img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 1)
-            result, accur = digit_recog(digit_img)
-            sudoku_list[index_c // 9][index_c % 9] = result
-##### solve sudoku
+for index_r,row in enumerate(y_lines):
+    for index_c,cell in enumerate(row):
+        x_c = cell[1]
+        y_c = cell[2]
+        w_c = cell[3]
+        h_c = cell[4]
+        for index_d,digit in enumerate(digits):
+            x_d = digit[0]
+            y_d = digit[1]
+            w_d = digit[2]
+            h_d = digit[3]
+            if x_c < x_d < x_c + w_c and y_c < y_d < y_c + h_c:
+                digit_img = img_crop[y_d:y_d + h_d, x_d:x_d + w_d]
+                digit_img = cv.cvtColor(digit_img, cv.COLOR_RGB2GRAY)
+                digit_img = cv.adaptiveThreshold(digit_img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 3)
+                result, accur = digit_recog(digit_img)
+                sudoku_list[index_r][index_c] = result
 print(np.matrix(sudoku_list))
+
+##### solve sudoku
 grid = sudoku_list
 def possible(y,x,n):
     for i in range(0,9):
@@ -177,12 +215,13 @@ def solve():
                         solve()
                         grid[y][x] = 0
                 return
-    for index_c, cell in enumerate(cells):
-        x_c = cell[0]
-        y_c = cell[1]
-        result = grid[index_c // 9][index_c % 9]
-        #cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (255, 255, 0),-1)
-        cv.putText(img_crop, str(result), (x_c + 15 , y_c+35), cv.FONT_HERSHEY_TRIPLEX, 1.4, (50, 50, 200), 3)
+    for index_r, row in enumerate(y_lines):
+        for index_c, cell in enumerate(row):
+            x_c = cell[1]
+            y_c = cell[2]
+            result = grid[index_r][index_c]
+            #cv.rectangle(img_crop, (x_c, y_c), (x_c + w_c, y_c + h_c), (255, 255, 0),-1)
+            cv.putText(img_crop, str(result), (x_c + 15 , y_c+35), cv.FONT_HERSHEY_TRIPLEX, 1.4, (50, 50, 200), 3)
 
 solve()
 
